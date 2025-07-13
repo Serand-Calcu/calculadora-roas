@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de ROAS</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .input-section, .results {
+            flex: 1;
+            min-width: 300px;
+        }
+        .chart-container {
+            width: 100%;
+            margin-top: 30px;
+        }
+        input, button {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Calculadora y Proyección de ROAS</h1>
+    
+    <div class="container">
+        <div class="input-section">
+            <h2>Datos Actuales</h2>
+            <label for="ingresos">Ingresos atribuibles a publicidad ($):</label>
+            <input type="number" id="ingresos" placeholder="Ej: 5000">
+            
+            <label for="gasto">Gasto en publicidad ($):</label>
+            <input type="number" id="gasto" placeholder="Ej: 1000">
+            
+            <h2>Proyección Futura</h2>
+            <label for="meses">Meses a proyectar:</label>
+            <input type="number" id="meses" min="1" max="24" value="6">
+            
+            <label for="crecimiento">Tasa de crecimiento mensual (%):</label>
+            <input type="number" id="crecimiento" step="0.1" placeholder="Ej: 5">
+            
+            <button onclick="calcularROAS()">Calcular ROAS</button>
+        </div>
+        
+        <div class="results">
+            <h2>Resultados</h2>
+            <div id="resultado-actual">
+                <p><strong>ROAS Actual:</strong> <span id="roas-actual">-</span></p>
+                <p id="interpretacion"></p>
+            </div>
+            
+            <h3>Proyección</h3>
+            <div id="tabla-proyeccion"></div>
+        </div>
+    </div>
+    
+    <div class="chart-container">
+        <canvas id="roasChart"></canvas>
+    </div>
+    
+    <script>
+        let roasChart = null;
+        
+        function calcularROAS() {
+            // Obtener valores de entrada
+            const ingresos = parseFloat(document.getElementById('ingresos').value);
+            const gasto = parseFloat(document.getElementById('gasto').value);
+            const meses = parseInt(document.getElementById('meses').value);
+            const crecimiento = parseFloat(document.getElementById('crecimiento').value) / 100;
+            
+            // Calcular ROAS actual
+            const roasActual = (ingresos / gasto).toFixed(2);
+            document.getElementById('roas-actual').textContent = roasActual + 'x';
+            
+            // Interpretación del ROAS
+            const interpretacion = document.getElementById('interpretacion');
+            if (roasActual > 4) {
+                interpretacion.textContent = "Excelente rendimiento: Por cada dólar invertido, generas $" + roasActual + " en ingresos.";
+                interpretacion.style.color = "green";
+            } else if (roasActual > 2) {
+                interpretacion.textContent = "Buen rendimiento: La publicidad es rentable.";
+                interpretacion.style.color = "blue";
+            } else if (roasActual > 1) {
+                interpretacion.textContent = "Rendimiento aceptable: Cubres los costos pero con poco margen.";
+                interpretacion.style.color = "orange";
+            } else {
+                interpretacion.textContent = "Rendimiento pobre: Estás perdiendo dinero en publicidad.";
+                interpretacion.style.color = "red";
+            }
+            
+            // Generar proyección
+            let tablaHTML = '<table><tr><th>Mes</th><th>Ingresos</th><th>Gasto</th><th>ROAS</th></tr>';
+            const datosProyeccion = [];
+            
+            for (let i = 0; i < meses; i++) {
+                const mes = i + 1;
+                const factor = Math.pow(1 + crecimiento, i);
+                const ingresosProyectados = ingresos * factor;
+                const gastoProyectado = gasto * factor;
+                const roasProyectado = (ingresosProyectados / gastoProyectado).toFixed(2);
+                
+                datosProyeccion.push({
+                    mes: mes,
+                    ingresos: ingresosProyectados,
+                    gasto: gastoProyectado,
+                    roas: roasProyectado
+                });
+                
+                tablaHTML += `<tr>
+                    <td>${mes}</td>
+                    <td>$${ingresosProyectados.toFixed(2)}</td>
+                    <td>$${gastoProyectado.toFixed(2)}</td>
+                    <td>${roasProyectado}x</td>
+                </tr>`;
+            }
+            
+            tablaHTML += '</table>';
+            document.getElementById('tabla-proyeccion').innerHTML = tablaHTML;
+            
+            // Generar gráfico
+            generarGrafico(datosProyeccion, roasActual);
+        }
+        
+        function generarGrafico(datosProyeccion, roasActual) {
+            const ctx = document.getElementById('roasChart').getContext('2d');
+            
+            // Destruir gráfico anterior si existe
+            if (roasChart) {
+                roasChart.destroy();
+            }
+            
+            const meses = datosProyeccion.map(item => `Mes ${item.mes}`);
+            const roasValues = datosProyeccion.map(item => parseFloat(item.roas));
+            
+            // Agregar el valor actual como Mes 0
+            meses.unshift('Actual');
+            roasValues.unshift(parseFloat(roasActual));
+            
+            roasChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: meses,
+                    datasets: [{
+                        label: 'ROAS (Retorno sobre gasto en publicidad)',
+                        data: roasValues,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        pointBackgroundColor: 'rgba(54, 162, 235, 1)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'ROAS (x)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Periodo'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `ROAS: ${context.parsed.y}x`;
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    yMin: 1,
+                                    yMax: 1,
+                                    borderColor: 'rgb(255, 99, 132)',
+                                    borderWidth: 2,
+                                    borderDash: [6, 6]
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
