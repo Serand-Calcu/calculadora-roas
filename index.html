@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de ROAS</title>
+    <title>Calculadora de ROAS (COP)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -11,11 +11,16 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+            background-color: #f5f5f5;
         }
         .container {
             display: flex;
             flex-wrap: wrap;
             gap: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         .input-section, .results {
             flex: 1;
@@ -25,50 +30,72 @@
             width: 100%;
             margin-top: 30px;
         }
-        input, button {
-            padding: 8px;
-            margin: 5px 0;
+        input, button, select {
+            padding: 10px;
+            margin: 8px 0;
             width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
         }
         button {
-            background-color: #4CAF50;
+            background-color: #2E86C1;
             color: white;
             border: none;
             cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #1B4F72;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            font-size: 14px;
         }
         th, td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 10px;
             text-align: left;
         }
         th {
             background-color: #f2f2f2;
         }
+        .cop-badge {
+            background-color: #F1C40F;
+            color: #333;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .info-text {
+            font-size: 13px;
+            color: #666;
+            margin-top: -5px;
+        }
     </style>
 </head>
 <body>
-    <h1>Calculadora y Proyección de ROAS</h1>
+    <h1>Calculadora de ROAS <span class="cop-badge">COP</span></h1>
+    <p class="info-text">Herramienta para calcular el Retorno sobre el Gasto en Publicidad en Pesos Colombianos</p>
     
     <div class="container">
         <div class="input-section">
             <h2>Datos Actuales</h2>
-            <label for="ingresos">Ingresos atribuibles a publicidad ($):</label>
-            <input type="number" id="ingresos" placeholder="Ej: 5000">
+            <label for="ingresos">Ingresos atribuibles a publicidad (COP):</label>
+            <input type="number" id="ingresos" placeholder="Ej: 5.000.000" title="Ingresos generados directamente por campañas publicitarias">
             
-            <label for="gasto">Gasto en publicidad ($):</label>
-            <input type="number" id="gasto" placeholder="Ej: 1000">
+            <label for="gasto">Gasto en publicidad (COP):</label>
+            <input type="number" id="gasto" placeholder="Ej: 1.200.000" title="Costo total de tus campañas publicitarias">
             
             <h2>Proyección Futura</h2>
             <label for="meses">Meses a proyectar:</label>
             <input type="number" id="meses" min="1" max="24" value="6">
             
             <label for="crecimiento">Tasa de crecimiento mensual (%):</label>
-            <input type="number" id="crecimiento" step="0.1" placeholder="Ej: 5">
+            <input type="number" id="crecimiento" step="0.1" placeholder="Ej: 5" value="5">
             
             <button onclick="calcularROAS()">Calcular ROAS</button>
         </div>
@@ -80,7 +107,7 @@
                 <p id="interpretacion"></p>
             </div>
             
-            <h3>Proyección</h3>
+            <h3>Proyección Mensual</h3>
             <div id="tabla-proyeccion"></div>
         </div>
     </div>
@@ -92,30 +119,42 @@
     <script>
         let roasChart = null;
         
+        // Función para formatear números como COP
+        function formatoCOP(valor) {
+            if (isNaN(valor)) return "$ 0 COP";
+            return "$ " + valor.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+        }
+        
         function calcularROAS() {
             // Obtener valores de entrada
-            const ingresos = parseFloat(document.getElementById('ingresos').value);
-            const gasto = parseFloat(document.getElementById('gasto').value);
-            const meses = parseInt(document.getElementById('meses').value);
-            const crecimiento = parseFloat(document.getElementById('crecimiento').value) / 100;
+            const ingresos = parseFloat(document.getElementById('ingresos').value) || 0;
+            const gasto = parseFloat(document.getElementById('gasto').value) || 0;
+            const meses = parseInt(document.getElementById('meses').value) || 6;
+            const crecimiento = (parseFloat(document.getElementById('crecimiento').value) || 0) / 100;
+            
+            // Validación básica
+            if (gasto <= 0) {
+                alert("El gasto en publicidad debe ser mayor a cero");
+                return;
+            }
             
             // Calcular ROAS actual
             const roasActual = (ingresos / gasto).toFixed(2);
-            document.getElementById('roas-actual').textContent = roasActual + 'x';
+            document.getElementById('roas-actual').innerHTML = `<strong>${roasActual}x</strong> (${formatoCOP(ingresos)} / ${formatoCOP(gasto)})`;
             
             // Interpretación del ROAS
             const interpretacion = document.getElementById('interpretacion');
             if (roasActual > 4) {
-                interpretacion.textContent = "Excelente rendimiento: Por cada dólar invertido, generas $" + roasActual + " en ingresos.";
+                interpretacion.innerHTML = "✅ <strong>Excelente rendimiento</strong>: Por cada peso invertido, generas <strong>$" + roasActual + "</strong> en ingresos.";
                 interpretacion.style.color = "green";
             } else if (roasActual > 2) {
-                interpretacion.textContent = "Buen rendimiento: La publicidad es rentable.";
+                interpretacion.innerHTML = "👍 <strong>Buen rendimiento</strong>: La publicidad es rentable.";
                 interpretacion.style.color = "blue";
             } else if (roasActual > 1) {
-                interpretacion.textContent = "Rendimiento aceptable: Cubres los costos pero con poco margen.";
+                interpretacion.innerHTML = "⚠️ <strong>Rendimiento aceptable</strong>: Cubres los costos pero con poco margen.";
                 interpretacion.style.color = "orange";
             } else {
-                interpretacion.textContent = "Rendimiento pobre: Estás perdiendo dinero en publicidad.";
+                interpretacion.innerHTML = "❌ <strong>Rendimiento pobre</strong>: Estás perdiendo dinero en publicidad.";
                 interpretacion.style.color = "red";
             }
             
@@ -139,9 +178,9 @@
                 
                 tablaHTML += `<tr>
                     <td>${mes}</td>
-                    <td>$${ingresosProyectados.toFixed(2)}</td>
-                    <td>$${gastoProyectado.toFixed(2)}</td>
-                    <td>${roasProyectado}x</td>
+                    <td>${formatoCOP(ingresosProyectados)}</td>
+                    <td>${formatoCOP(gastoProyectado)}</td>
+                    <td><strong>${roasProyectado}x</strong></td>
                 </tr>`;
             }
             
@@ -174,30 +213,20 @@
                     datasets: [{
                         label: 'ROAS (Retorno sobre gasto en publicidad)',
                         data: roasValues,
-                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 2,
+                        backgroundColor: 'rgba(46, 134, 193, 0.2)',
+                        borderColor: 'rgba(46, 134, 193, 1)',
+                        borderWidth: 3,
                         tension: 0.1,
-                        pointBackgroundColor: 'rgba(54, 162, 235, 1)'
+                        pointBackgroundColor: 'rgba(46, 134, 193, 1)',
+                        pointRadius: 5
                     }]
                 },
                 options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'ROAS (x)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Periodo'
-                            }
-                        }
-                    },
+                    responsive: true,
                     plugins: {
+                        legend: {
+                            position: 'top',
+                        },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -211,16 +240,54 @@
                                     type: 'line',
                                     yMin: 1,
                                     yMax: 1,
-                                    borderColor: 'rgb(255, 99, 132)',
+                                    borderColor: 'rgb(231, 76, 60)',
                                     borderWidth: 2,
-                                    borderDash: [6, 6]
+                                    borderDash: [6, 6],
+                                    label: {
+                                        content: 'Umbral de rentabilidad',
+                                        enabled: true,
+                                        position: 'right'
+                                    }
                                 }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'ROAS (x)',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Periodo',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                display: false
                             }
                         }
                     }
                 }
             });
         }
+        
+        // Ejemplo de datos iniciales para guiar al usuario
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('ingresos').value = '5000000';
+            document.getElementById('gasto').value = '1200000';
+        });
     </script>
 </body>
 </html>
